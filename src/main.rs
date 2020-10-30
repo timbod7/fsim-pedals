@@ -4,17 +4,20 @@
 
 extern crate panic_semihosting;
 
-use cortex_m::asm::{delay, wfi};
+use cortex_m::asm::{delay};
 use cortex_m_rt::entry;
+use cortex_m::interrupt::free as disable_interrupts;
 use embedded_hal::digital::v2::OutputPin;
 use stm32f1xx_hal::stm32::{interrupt, Interrupt};
 use stm32f1xx_hal::usb::{Peripheral, UsbBus, UsbBusType};
 use stm32f1xx_hal::{prelude::*, stm32};
 use usb_device::{bus::UsbBusAllocator, prelude::*};
-use usbd_serial::{SerialPort, USB_CLASS_CDC};
+use usbd_hid::hid_class::{HIDClass};
+use usbd_hid::descriptor::MouseReport;
+use usbd_hid::descriptor::generator_prelude::*;
 
 static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
-static mut USB_SERIAL: Option<usbd_serial::SerialPort<UsbBusType>> = None;
+static mut USB_HID: Option<HIDClass<UsbBusType>> = None;
 static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 
 #[entry]
@@ -58,14 +61,15 @@ fn main() -> ! {
         let bus = UsbBus::new(usb);
 
         USB_BUS = Some(bus);
+        use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
-        USB_SERIAL = Some(SerialPort::new(USB_BUS.as_ref().unwrap()));
+        USB_HID = Some(HIDClass::new(USB_BUS.as_ref().unwrap(), MouseReport::desc(), 60));
 
         let usb_dev = UsbDeviceBuilder::new(USB_BUS.as_ref().unwrap(), UsbVidPid(0x16c0, 0x27dd))
-            .manufacturer("Fake company")
-            .product("Serial port")
+            .manufacturer("twdkz")
+            .product("Fsim Pedals")
             .serial_number("TEST")
-            .device_class(USB_CLASS_CDC)
+            .device_class(0xEF) // misc
             .build();
 
         USB_DEVICE = Some(usb_dev);
@@ -77,8 +81,21 @@ fn main() -> ! {
     nvic.enable(Interrupt::USB_LP_CAN_RX0);
 
     loop {
-        wfi();
+        delay(25 * 1024 * 1024);
+        push_mouse_movement(MouseReport{x: 0, y: 10, buttons: 0}).ok().unwrap_or(0);
+        delay(25 * 1024 * 1024);
+        push_mouse_movement(MouseReport{x: 0, y: -10, buttons: 0}).ok().unwrap_or(0);
     }
+}
+
+fn push_mouse_movement(report: MouseReport) -> Result<usize, usb_device::UsbError> {
+    disable_interrupts(|_| {
+        unsafe {
+            USB_HID.as_mut().map(|hid| {
+                hid.push_input(&report)
+            })
+        }
+    }).unwrap()
 }
 
 #[interrupt]
@@ -93,25 +110,9 @@ fn USB_LP_CAN_RX0() {
 
 fn usb_interrupt() {
     let usb_dev = unsafe { USB_DEVICE.as_mut().unwrap() };
-    let serial = unsafe { USB_SERIAL.as_mut().unwrap() };
+    let hid = unsafe { USB_HID.as_mut().unwrap() };
 
-    if !usb_dev.poll(&mut [serial]) {
+    if !usb_dev.poll(&mut [hid]) {
         return;
-    }
-
-    let mut buf = [0u8; 8];
-
-    match serial.read(&mut buf) {
-        Ok(count) if count > 0 => {
-            // Echo back in upper case
-            for c in buf[0..count].iter_mut() {
-                if 0x61 <= *c && *c <= 0x7a {
-                    *c &= !0x20;
-                }
-            }
-
-            serial.write(&buf[0..count]).ok();
-        }
-        _ => {}
     }
 }
