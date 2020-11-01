@@ -14,12 +14,14 @@ use stm32f1xx_hal::usb::{Peripheral, UsbBus, UsbBusType};
 use stm32f1xx_hal::{prelude::*, stm32};
 use usb_device::{bus::UsbBusAllocator, prelude::*};
 use usbd_hid::hid_class::{HIDClass};
-use usbd_hid::descriptor::MouseReport;
+use joystick::JoystickReport;
 use usbd_hid::descriptor::generator_prelude::*;
 
 static mut USB_BUS: Option<UsbBusAllocator<UsbBusType>> = None;
 static mut USB_HID: Option<HIDClass<UsbBusType>> = None;
 static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
+
+mod joystick;
 
 #[entry]
 fn main() -> ! {
@@ -62,7 +64,7 @@ fn main() -> ! {
 
         USB_BUS = Some(bus);
 
-        USB_HID = Some(HIDClass::new(USB_BUS.as_ref().unwrap(), MouseReport::desc(), 60));
+        USB_HID = Some(HIDClass::new(USB_BUS.as_ref().unwrap(), JoystickReport::desc(), 60));
 
         let usb_dev = UsbDeviceBuilder::new(USB_BUS.as_ref().unwrap(), UsbVidPid(0x16c0, 0x27dd))
             .manufacturer("twdkz")
@@ -79,13 +81,13 @@ fn main() -> ! {
 
     loop {
         delay(25 * 1024 * 1024);
-        push_mouse_movement(MouseReport{x: 0, y: 20, buttons: 0}).ok().unwrap_or(0);
+        push_joystick_report(JoystickReport{x: -32000, y:0}).ok().unwrap_or(0);
         delay(25 * 1024 * 1024);
-        push_mouse_movement(MouseReport{x: 0, y: -20, buttons: 0}).ok().unwrap_or(0);
+        push_joystick_report(JoystickReport{x: 32000, y:0}).ok().unwrap_or(0);
     }
 }
 
-fn push_mouse_movement(report: MouseReport) -> Result<usize, usb_device::UsbError> {
+fn push_joystick_report(report: JoystickReport) -> Result<usize, usb_device::UsbError> {
     disable_interrupts(|_| {
         unsafe {
             USB_HID.as_mut().map(|hid| {
