@@ -7,6 +7,7 @@ extern crate panic_semihosting;
 use cortex_m::asm::{delay};
 use cortex_m_rt::entry;
 use cortex_m::interrupt::free as disable_interrupts;
+use cortex_m::peripheral::NVIC;
 use embedded_hal::digital::v2::OutputPin;
 use stm32f1xx_hal::stm32::{interrupt, Interrupt};
 use stm32f1xx_hal::usb::{Peripheral, UsbBus, UsbBusType};
@@ -22,7 +23,6 @@ static mut USB_DEVICE: Option<UsbDevice<UsbBusType>> = None;
 
 #[entry]
 fn main() -> ! {
-    let p = cortex_m::Peripherals::take().unwrap();
     let dp = stm32::Peripherals::take().unwrap();
 
     let mut flash = dp.FLASH.constrain();
@@ -44,7 +44,7 @@ fn main() -> ! {
     // This forced reset is needed only for development, without it host
     // will not reset your device when you upload new firmware.
     let mut usb_dp = gpioa.pa12.into_push_pull_output(&mut gpioa.crh);
-    usb_dp.set_low();
+    usb_dp.set_low().unwrap();
     delay(clocks.sysclk().0 / 100);
 
     let usb_dm = gpioa.pa11;
@@ -61,7 +61,6 @@ fn main() -> ! {
         let bus = UsbBus::new(usb);
 
         USB_BUS = Some(bus);
-        use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
         USB_HID = Some(HIDClass::new(USB_BUS.as_ref().unwrap(), MouseReport::desc(), 60));
 
@@ -73,18 +72,16 @@ fn main() -> ! {
             .build();
 
         USB_DEVICE = Some(usb_dev);
+
+        NVIC::unmask(Interrupt::USB_HP_CAN_TX);
+        NVIC::unmask(Interrupt::USB_LP_CAN_RX0);
     }
-
-    let mut nvic = p.NVIC;
-
-    nvic.enable(Interrupt::USB_HP_CAN_TX);
-    nvic.enable(Interrupt::USB_LP_CAN_RX0);
 
     loop {
         delay(25 * 1024 * 1024);
-        push_mouse_movement(MouseReport{x: 0, y: 10, buttons: 0}).ok().unwrap_or(0);
+        push_mouse_movement(MouseReport{x: 0, y: 20, buttons: 0}).ok().unwrap_or(0);
         delay(25 * 1024 * 1024);
-        push_mouse_movement(MouseReport{x: 0, y: -10, buttons: 0}).ok().unwrap_or(0);
+        push_mouse_movement(MouseReport{x: 0, y: -20, buttons: 0}).ok().unwrap_or(0);
     }
 }
 
