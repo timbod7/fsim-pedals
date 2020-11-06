@@ -8,19 +8,14 @@ use usbd_hid::descriptor::generator_prelude::*;
 #[gen_hid_descriptor(
     (collection = APPLICATION, usage_page = GENERIC_DESKTOP, usage = JOYSTICK) = {
         (collection = PHYSICAL, usage = POINTER) = {
-            (usage_page = GENERIC_DESKTOP,) = {
-                (usage = X,) = {
-                    #[item_settings data,variable,absolute] x=input;
-                };
-                (usage = Y,) = {
-                    #[item_settings data,variable,absolute] y=input;
-                };
+            (usage = X,) = {
+                #[item_settings data,variable,absolute]
+                 x=input;
             };
         };
     }
 )]
 #[allow(dead_code)]
 pub struct JoystickReport {
-    pub x: i16,
-    pub y: i16,
+    pub x: u16
 }

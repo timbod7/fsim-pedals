@@ -11,7 +11,7 @@ use cortex_m::peripheral::NVIC;
 use embedded_hal::digital::v2::OutputPin;
 use stm32f1xx_hal::stm32::{interrupt, Interrupt};
 use stm32f1xx_hal::usb::{Peripheral, UsbBus, UsbBusType};
-use stm32f1xx_hal::{prelude::*, stm32};
+use stm32f1xx_hal::{prelude::*, stm32, adc};
 use usb_device::{bus::UsbBusAllocator, prelude::*};
 use usbd_hid::hid_class::{HIDClass};
 use joystick::JoystickReport;
@@ -35,11 +35,21 @@ fn main() -> ! {
         .use_hse(8.mhz())
         .sysclk(48.mhz())
         .pclk1(24.mhz())
+        .adcclk(2.mhz())
         .freeze(&mut flash.acr);
 
     assert!(clocks.usbclk_valid());
 
     let mut gpioa = dp.GPIOA.split(&mut rcc.apb2);
+    let mut _gpiob = dp.GPIOB.split(&mut rcc.apb2);
+    let mut gpioc = dp.GPIOC.split(&mut rcc.apb2);
+
+    // Setup ADC, with pa0 as an analog input
+    let mut adc1 = adc::Adc::adc1(dp.ADC1, &mut rcc.apb2, clocks);
+    let mut adc1_pa0 = gpioa.pa0.into_analog(&mut gpioa.crl);
+
+    // Setup user LED
+    let mut led = gpioc.pc13.into_push_pull_output(&mut gpioc.crh);
 
     // BluePill board has a pull-up resistor on the D+ line.
     // Pull the D+ pin down to send a RESET condition to the USB bus.
@@ -80,10 +90,22 @@ fn main() -> ! {
     }
 
     loop {
-        delay(25 * 1024 * 1024);
-        push_joystick_report(JoystickReport{x: -32000, y:0}).ok().unwrap_or(0);
-        delay(25 * 1024 * 1024);
-        push_joystick_report(JoystickReport{x: 32000, y:0}).ok().unwrap_or(0);
+        let data: u16 = adc1.read(&mut adc1_pa0).unwrap();
+        // let sdata: i16 = (data as i16 - 2048) * 4;
+        //let sdata: u8 = (data / 16) as u8;
+        let sdata = data * 16;
+
+
+        // let sdata: i16 = (i32::from(data) - i32::from(u16::MAX)/2) as i16;
+
+       if sdata < 32768  {
+            led.set_low().unwrap()
+        } else {
+            led.set_high().unwrap()
+        };
+
+        push_joystick_report(JoystickReport{x:sdata}).ok().unwrap_or(0);
+
     }
 }
 
