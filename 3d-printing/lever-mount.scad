@@ -77,7 +77,7 @@ module bearing_block() {
 leg_width = 14;
 leg_height = 10;
 
- module bearing_block_leg() {
+ module bearing_block_leg(cable_hole=false) {
    difference() {
      translate([0,housing_width,0]){
         rotate(90, [1,0,0]) {
@@ -97,7 +97,13 @@ leg_height = 10;
     translate([leg_width/2,housing_width/2,-nothing]) {
        mounting_hole();
     }
+    if (cable_hole) {
+      translate([0,housing_width/4,6])
+      rotate([0,90,0])
+      cylinder(h=leg_width+2*nothing,d=4);
+    }
   }
+
 }
 
 module bearing_mount() {
@@ -106,7 +112,7 @@ module bearing_mount() {
   bearing_block();
  
   translate([housing_length,0,0])
-  bearing_block_leg();
+  bearing_block_leg(true);
  
   translate([0,housing_width,0])
   rotate(180, [0,0,1])
@@ -131,11 +137,11 @@ module pot_opening() {
   }
 }
 
-// main();
 //mounting_hole();
 // bearing_block();
-// bearing_block_leg();
 // pot_opening();
-bearing_mount();
+// bearing_block_leg();
+
+ bearing_mount();
 
 
