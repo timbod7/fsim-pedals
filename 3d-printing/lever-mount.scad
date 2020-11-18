@@ -65,11 +65,11 @@ module bearing_block() {
     }
     translate([hw2,hw2,0-nothing]) {
       linear_extrude(height=bearing_thickness) {
-        circle(d=pot_thread_diameter);
+        circle(d=bearing_diam);
       }
     }
         
-  translate([hw2 + lever_gear_radius + pot_gear_radius, hw2, housing_thickness-5])
+  translate([hw2 + lever_gear_radius + pot_gear_radius, hw2, housing_thickness-4])
   pot_opening();
   }
 }
@@ -125,7 +125,7 @@ module pot_opening() {
   body_diam = 27;
   depth = 100;
   mount_spike_len = 3.5;
-  cylinder(h=7, d=pot_thread_diameter);
+  cylinder(h=6, d=pot_thread_diameter);
   linear_extrude(2.5)
   translate([-mount_spike_len/2,-12.5])
   square([mount_spike_len,2]);
