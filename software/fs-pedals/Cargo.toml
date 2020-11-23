@@ -11,5 +11,4 @@ cortex-m-rt = { version = "0.6.8", features = ["device"] }
 panic-semihosting = "0.5.2"
 embedded-hal = "0.2.4"
 usb-device = "0.2.5"
-usbd-serial = "0.1.0"
 usbd-hid = "0.4.4"
