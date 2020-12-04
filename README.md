@@ -1,4 +1,4 @@
-This repo contains 3d models and source code for some homebrew flight simulator pedals.
+This repo contains 3d models and rust source code for some homebrew flight simulator pedals.
 
 Read this [blog post][1] for details.
 
