@@ -28,6 +28,7 @@ module lever_hole() {
 }
 
 module disk() {
+  rotate([180,0,0])
   difference() {
     union() {
       linear_extrude(disk_thickness) {
